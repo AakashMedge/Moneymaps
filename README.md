@@ -2,6 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 TEAM : NEURO 
 https://github.com/codewithgirish
+https://github.com/patilgayatri05
 
 
 ## Getting Started
