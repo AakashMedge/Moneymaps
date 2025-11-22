@@ -23,6 +23,9 @@ model User {
   transactions  Transaction[]
   accounts      Account[]
   budgets       Budget[]
+  insights      Insight[]
+  chatMessages  ChatMessage[]
+  financialProfile FinancialProfile?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -75,6 +78,7 @@ model Transaction{
 model Budget{
    id          String       @id @default(uuid())
   amount      Decimal
+  isLocked    Boolean      @default(false) // Safety Guardian: locked budgets
   lastAlertSent DateTime?  // Track when the last alert was sent
   userId      String       @unique
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -83,6 +87,31 @@ model Budget{
 
   @@index([userId])
   @@map("budgets")
+}
+
+model Insight {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  type      String   // e.g., "SAVINGS", "EXPENSE", "BUDGET"
+  action    String?  // Safety Guardian: action taken (e.g., "LOCKED_BUDGET")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("insights")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // "user" or "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("chat_messages")
 }
 
 enum TransactionType {
@@ -106,4 +135,33 @@ enum RecurringInterval {
   WEEKLY
   MONTHLY
   YEARLY
+}
+
+model FinancialProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personality Quiz Answers
+  happyPurchase     String?  // What made them happy
+  regretPurchase    String?  // What they regret
+  financialFear     String?  // Biggest fear
+  savingGoal        String?  // What they're saving for
+  moneyFeeling      String?  // How they feel about money
+  
+  // Behavioral Patterns (AI-learned)
+  riskTolerance     String   @default("MODERATE") // LOW, MODERATE, HIGH
+  spendingStyle     String   @default("BALANCED") // IMPULSIVE, BALANCED, CAUTIOUS
+  regretThreshold   Decimal  @default(0) // Amount above which they regret purchases
+  emotionalTriggers String[] @default([]) // Categories they overspend on when stressed
+  
+  // Decision History
+  approvedDecisions Int      @default(0)
+  rejectedDecisions Int      @default(0)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([userId])
+  @@map("financial_profiles")
 }

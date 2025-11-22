@@ -19,159 +19,168 @@ import React, { useEffect } from 'react'
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import ReciptScanner from './recipt-scanner';
+import VoiceTransaction from './voice-transaction';
+import SmartPaste from './smart-paste';
 
 const AddTransactionForm = ({
-  accounts, 
+  accounts,
   categories,
-editMode = false,
-initialData = null,
+  editMode = false,
+  initialData = null,
 }) => {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const editId = searchParams.get("edit");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
 
-   const {
-     register,
-     setValue,
-     handleSubmit,
-     formState: { errors },
-     watch,
-     getValues,
-     reset,
-   } = useForm({
-     defaultValues:
-       editMode && initialData
-         ? {
-             type: initialData.type,
-             amount: initialData.amount.toString(),
-             description: initialData.description,
-             accountId: initialData.accountId,
-             category: initialData.category,
-             date: new Date(initialData.date),
-             isRecurring: initialData.isRecurring,
-             ...(initialData.recurringInterval && {
-               recurringInterval: initialData.recurringInterval,
-             }),
-           }
-         : {
-             type: "EXPENSE",
-             amount: "",
-             description: "",
-             accountId: accounts.find((ac) => ac.isDefault)?.id,
-             date: new Date(),
-             isRecurring: false,
-           },
-   });
-    const {
-      loading: transactionLoading,
-      fn: transactionFn,
-      data: transactionResult,
-    } = useFetch(editMode ? updateTransaction : createTransaction);
-      const type = watch("type");
-      const isRecurring = watch("isRecurring");
-      const date = watch("date");
+  const {
+    register,
+    setValue,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    getValues,
+    reset,
+  } = useForm({
+    defaultValues:
+      editMode && initialData
+        ? {
+          type: initialData.type,
+          amount: initialData.amount.toString(),
+          description: initialData.description,
+          accountId: initialData.accountId,
+          category: initialData.category,
+          date: new Date(initialData.date),
+          isRecurring: initialData.isRecurring,
+          ...(initialData.recurringInterval && {
+            recurringInterval: initialData.recurringInterval,
+          }),
+        }
+        : {
+          type: "EXPENSE",
+          amount: "",
+          description: "",
+          accountId: accounts.find((ac) => ac.isDefault)?.id,
+          date: new Date(),
+          isRecurring: false,
+        },
+  });
+  const {
+    loading: transactionLoading,
+    fn: transactionFn,
+    data: transactionResult,
+  } = useFetch(editMode ? updateTransaction : createTransaction);
+  const type = watch("type");
+  const isRecurring = watch("isRecurring");
+  const date = watch("date");
 
-      const onSubmit = async (data) => {
-        const formData = {
-            ...data,
-            amount: parseFloat(data.amount),
-      };
-
-     if (editMode) {
-       transactionFn(editId, formData);
-     } else {
-       transactionFn(formData);
-     }
+  const onSubmit = async (data) => {
+    const formData = {
+      ...data,
+      amount: parseFloat(data.amount),
     };
 
-    useEffect(() => {
-        if (!transactionLoading) {
-            if (transactionResult?.success) {
-                toast.success(editMode ? "Transaction updated successfully"
+    if (editMode) {
+      transactionFn(editId, formData);
+    } else {
+      transactionFn(formData);
+    }
+  };
+
+  useEffect(() => {
+    if (!transactionLoading) {
+      if (transactionResult?.success) {
+        toast.success(editMode ? "Transaction updated successfully"
           : "Transaction created successfully");
-                reset();
-                router.push(`/account/${transactionResult.data.accountId}`);
-            } else if (transactionResult?.error) {
-                toast.error(transactionResult.error || "Something went wrong!");
-            }
-        }
-    }, [transactionResult, transactionLoading,editMode]);
-    
+        reset();
+        router.push(`/account/${transactionResult.data.accountId}`);
+      } else if (transactionResult?.error) {
+        toast.error(transactionResult.error || "Something went wrong!");
+      }
+    }
+  }, [transactionResult, transactionLoading, editMode]);
 
-      const filteredCategories = categories.filter(
-        (category) => category.type === type
-      );
 
-      const handleScanComplete = (scannedData) => {
-        if (scannedData) {
-          setValue("amount", scannedData.amount.toString());
-          setValue("date", new Date(scannedData.date));
-          if (scannedData.description) {
-            setValue("description", scannedData.description);
-          }
-          if (scannedData.category) {
-            setValue("category", scannedData.category);
-          }
-          toast.success("Receipt scanned successfully");
-        }
-        
-      };
+  const filteredCategories = categories.filter(
+    (category) => category.type === type
+  );
 
-  return <form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
-     {/* AI RECIPT SCANNER */}
-     <ReciptScanner onScanComplete={handleScanComplete}/>
+  const handleScanComplete = (scannedData) => {
+    if (scannedData) {
+      setValue("amount", scannedData.amount.toString());
+      setValue("date", new Date(scannedData.date));
+      if (scannedData.description) {
+        setValue("description", scannedData.description);
+      }
+      if (scannedData.category) {
+        setValue("category", scannedData.category);
+      }
+      if (scannedData.type) {
+        setValue("type", scannedData.type);
+      }
+      toast.success("Transaction details filled!");
+    }
+  };
 
-    <div className='space-y-2'>
-    <label className="text-sm font-medium">Type</label>
-    <Select
-      onValueChange={(value) => setValue("type", value)}
-      defaultValue={type}
-    >
-  <SelectTrigger className="w-[180px]">
-    <SelectValue placeholder="Theme" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="EXPENSE">Expense</SelectItem>
-    <SelectItem value="INCOME">Income</SelectItem>
-  </SelectContent>
-</Select>
-{errors.type && (
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
+      {/* AI SCANNERS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ReciptScanner onScanComplete={handleScanComplete} />
+        <VoiceTransaction onScanComplete={handleScanComplete} />
+        <SmartPaste onScanComplete={handleScanComplete} />
+      </div>
+
+      <div className='space-y-2'>
+        <label className="text-sm font-medium">Type</label>
+        <Select
+          onValueChange={(value) => setValue("type", value)}
+          defaultValue={type}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Theme" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="EXPENSE">Expense</SelectItem>
+            <SelectItem value="INCOME">Income</SelectItem>
+          </SelectContent>
+        </Select>
+        {errors.type && (
           <p className="text-sm text-red-500">{errors.type.message}</p>
         )}
 
-    </div>
-<div className='grid gap-6 md:grid-cols-2'>
-    <div className='space-y-2'>
-    <label className="text-sm font-medium">Amount</label>
-    <Input 
-      type="number"
-      step="0.01"
-      placeholder="0.00"
-      {...register("amount")}
-    
-    />
-    
-    {errors.amount && (
-  <p className="text-sm text-red-500">{errors.amount.message}</p>
-)}
-    </div>
+      </div>
+      <div className='grid gap-6 md:grid-cols-2'>
+        <div className='space-y-2'>
+          <label className="text-sm font-medium">Amount</label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            {...register("amount")}
 
-    <div className='space-y-2'>
-    <label className="text-sm font-medium">Account</label>
-    <Select
-      onValueChange={(value) => setValue("accountId", value)}
-      defaultValue={getValues("accountId")}
-    >
-  <SelectTrigger className="w-[180px]">
-    <SelectValue placeholder="Select Account" />
-  </SelectTrigger>
-  <SelectContent>
-  {accounts.map((account) => (
+          />
+
+          {errors.amount && (
+            <p className="text-sm text-red-500">{errors.amount.message}</p>
+          )}
+        </div>
+
+        <div className='space-y-2'>
+          <label className="text-sm font-medium">Account</label>
+          <Select
+            onValueChange={(value) => setValue("accountId", value)}
+            defaultValue={getValues("accountId")}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name} (${parseFloat(account.balance).toFixed(2)})
                 </SelectItem>
-  ))}
-   <CreateAccountDrawer>
+              ))}
+              <CreateAccountDrawer>
                 <Button
                   variant="ghost"
                   className=" w-full select-none items-center  text-sm outline-none "
@@ -179,17 +188,17 @@ initialData = null,
                   Create Account
                 </Button>
               </CreateAccountDrawer>
-  </SelectContent>
-</Select>
-{errors.accountId && (
-  <p className="text-sm text-red-500">{errors.accountId.message}</p>
-)}
+            </SelectContent>
+          </Select>
+          {errors.accountId && (
+            <p className="text-sm text-red-500">{errors.accountId.message}</p>
+          )}
 
 
-    </div>
-    </div>
+        </div>
+      </div>
 
-    <div className="space-y-2">
+      <div className="space-y-2">
         <label className="text-sm font-medium">Category</label>
         <Select
           onValueChange={(value) => setValue("category", value)}
@@ -212,7 +221,7 @@ initialData = null,
       </div>
 
 
-    <div className="space-y-2">
+      <div className="space-y-2">
         <label className="text-sm font-medium">Date</label>
         <Popover>
           <PopoverTrigger asChild>
@@ -244,8 +253,8 @@ initialData = null,
         )}
       </div>
 
-       {/* Description */}
-       <div className="space-y-2">
+      {/* Description */}
+      <div className="space-y-2">
         <label className="text-sm font-medium">Description</label>
         <Input placeholder="Enter description" {...register("description")} />
         {errors.description && (
@@ -253,8 +262,8 @@ initialData = null,
         )}
       </div>
 
-       {/* Recurring Toggle */}
-       <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+      {/* Recurring Toggle */}
+      <div className="flex flex-row items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
           <label className="text-base font-medium">Recurring Transaction</label>
           <div className="text-sm text-muted-foreground">
@@ -267,7 +276,7 @@ initialData = null,
         />
       </div>
 
-         {/* Recurring Interval */}
+      {/* Recurring Interval */}
       {isRecurring && (
         <div className="space-y-2">
           <label className="text-sm font-medium">Recurring Interval</label>
@@ -293,8 +302,8 @@ initialData = null,
         </div>
       )}
 
-       {/* Actions */}
-       <div className="flex gap-4">
+      {/* Actions */}
+      <div className="flex gap-4">
         <Button
           type="button"
           variant="outline"
@@ -303,22 +312,23 @@ initialData = null,
         >
           Cancel
         </Button>
-        <Button  type="submit" className="w-full flex-1" disabled={transactionLoading}>
+        <Button type="submit" className="w-full flex-1" disabled={transactionLoading}>
           {transactionLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {editMode  ? "Updating..." : "Creating..."}
+              {editMode ? "Updating..." : "Creating..."}
             </>
           ) : editMode ? (
             "Update Transaction"
           ) : (
             "Create Transaction"
           )}
-         
+
         </Button>
       </div>
 
     </form>
+  );
 };
 
-export default AddTransactionForm
+export default AddTransactionForm;
