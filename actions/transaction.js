@@ -6,6 +6,8 @@ import { request } from "@arcjet/next";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "./send-email";
+import TransactionEmail from "@/emails/transaction-email";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -90,6 +92,42 @@ export async function createTransaction(data) {
 
     revalidatePath("/dashboard");
     revalidatePath(`/account/${data.accountId}`);
+
+    // --- Send Email Notification ---
+    try {
+      // 1. Generate AI Insight (Short & Witty)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const prompt = `
+        Generate a very short (1 sentence), witty, and personalized comment about this transaction for the user.
+        Transaction: ${data.type} of ${data.amount} for ${data.description} (${data.category}).
+        Current Balance: ${newBalance}.
+        Tone: Helpful, slightly humorous, like a financial friend.
+        Example: "Whoa, big spender! Hope that coffee was worth it." or "Nice! Saving money is always a good look."
+      `;
+      const result = await model.generateContent(prompt);
+      const aiInsight = result.response.text();
+
+      // 2. Send Email
+      await sendEmail({
+        to: user.email,
+        subject: `Welth Alert: ${data.type === "EXPENSE" ? "Spent" : "Received"} ₹${data.amount}`,
+        react: TransactionEmail({
+          userName: user.name,
+          type: data.type,
+          amount: data.amount,
+          description: data.description,
+          category: data.category,
+          date: new Date(data.date),
+          accountName: account.name,
+          newBalance: newBalance.toFixed(2),
+          aiInsight: aiInsight,
+        }),
+      });
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+      // Don't fail the transaction if email fails
+    }
+
     return { success: true, data: serializeAmount(transaction) };
   } catch (error) {
     throw new Error(error.message);
@@ -120,7 +158,7 @@ function calculateNextRecurringDate(startDate, interval) {
 
 export async function scanReceipt(file) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();

@@ -7,6 +7,7 @@ import InsightCard from "@/components/advisor/InsightCard";
 import GuardianTrigger from "@/components/advisor/GuardianTrigger";
 import CashFlowChart from "@/components/advisor/CashFlowChart";
 import SpendingAllowance from "@/components/advisor/SpendingAllowance";
+import Jarvis from "@/components/Jarvis";
 import { predictCashFlow, calculateHistoricalBalance } from "@/lib/predictions";
 
 const AdvisorPage = async () => {
@@ -46,6 +47,9 @@ const AdvisorPage = async () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            {/* Jarvis Voice Assistant */}
+            <Jarvis />
+
             <h1 className="text-3xl font-bold gradient-title mb-8">Welth AI Advisor</h1>
 
             {/* Guilt-Free Spending Allowance - Hero Section */}
